@@ -1,0 +1,6 @@
+apiVersion: gitopssecret.snappcloud.io/v1alpha1
+kind: GPGKey
+metadata:
+  name: gpgkey-sample
+spec:
+  # TODO(user): Add fields here
