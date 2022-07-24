@@ -19,6 +19,7 @@ package controllers
 import (
 	"bytes"
 	"context"
+	"github.com/go-logr/logr"
 	gitopssecretsnappcloudiov1alpha1 "github.com/snapp-incubator/sops-operator/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"os"
@@ -29,6 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"strings"
+	"time"
 )
 
 var (
@@ -39,7 +41,9 @@ var (
 // GPGKeyReconciler reconciles a GPGKey object
 type GPGKeyReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme       *runtime.Scheme
+	Log          logr.Logger
+	RequeueAfter int64
 }
 
 //+kubebuilder:rbac:groups=gitopssecret.snappcloud.io,resources=gpgkeys,verbs=get;list;watch;create;update;patch;delete
@@ -59,36 +63,45 @@ func (r *GPGKeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	loggerObj := log.FromContext(ctx)
 	loggerObj.Info("strated gpgkey reconciler")
 
-	gpgKey := &gitopssecretsnappcloudiov1alpha1.GPGKey{}
-	err := r.Get(ctx, req.NamespacedName, gpgKey)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return reconcile.Result{}, err
-		}
-		return reconcile.Result{}, err
-	}
-
-	err = importKey(req, gpgKey)
-	if err != nil {
+	gpgKey, finishLoop, err := r.getGPGKey(req)
+	if finishLoop {
 		return ctrl.Result{}, err
 	}
 
-	gpgKey.Status.Message = GPGKeyImportedSuccessfully
-
+	rescheduleReconcileLoop := r.importKey(req, gpgKey)
+	if rescheduleReconcileLoop {
+		return reconcile.Result{Requeue: true, RequeueAfter: time.Duration(r.RequeueAfter) * time.Minute}, nil
+	}
 	return ctrl.Result{}, nil
 }
 
-func importKey(req ctrl.Request, gpgKey *gitopssecretsnappcloudiov1alpha1.GPGKey) error {
+func (r *GPGKeyReconciler) getGPGKey(req ctrl.Request) (*gitopssecretsnappcloudiov1alpha1.GPGKey, bool, error) {
+	gpgKey := &gitopssecretsnappcloudiov1alpha1.GPGKey{}
+	err := r.Get(context.Background(), req.NamespacedName, gpgKey)
+	if err != nil {
+		r.Log.Info("Couldn't get GPGKey obj", "gpgkey", req.NamespacedName)
+		return gpgKey, true, err
+	}
+	return gpgKey, false, nil
+}
+
+func (r *GPGKeyReconciler) importKey(req ctrl.Request, gpgKey *gitopssecretsnappcloudiov1alpha1.GPGKey) bool {
 	keyDirPath := filepath.Join("keys", req.Namespace)
 	err := createKeyDirectories(keyDirPath)
 	if err != nil {
-		return err
+		r.Log.Info("Couldn't create directory for gpgkey", "gpgkey", req.NamespacedName)
+		gpgKey.Status.Message = GPGKeyFailedToImport
+		r.Status().Update(context.Background(), gpgKey)
+		return true
 	}
 
 	keyFullPath := filepath.Join(keyDirPath, req.Name+".gpg")
 	err = createKeyFile(keyFullPath, gpgKey)
 	if err != nil {
-		return err
+		r.Log.Info("Couldn't create file for gpgkey", "gpgkey", req.NamespacedName)
+		gpgKey.Status.Message = GPGKeyFailedToImport
+		r.Status().Update(context.Background(), gpgKey)
+		return true
 	}
 
 	args := []string{
@@ -103,9 +116,14 @@ func importKey(req ctrl.Request, gpgKey *gitopssecretsnappcloudiov1alpha1.GPGKey
 	cmd.Stderr = &stderr
 	err = cmd.Run()
 	if err != nil {
-		return err
+		r.Log.Info("Couldn't import gpgkey", "gpgkey", req.NamespacedName, "stderr", stderr.String())
+		gpgKey.Status.Message = GPGKeyFailedToImport
+		r.Status().Update(context.Background(), gpgKey)
+		return true
 	}
-	return nil
+	gpgKey.Status.Message = GPGKeyImportedSuccessfully
+	r.Status().Update(context.Background(), gpgKey)
+	return false
 }
 
 func createKeyDirectories(dirPath string) error {
@@ -138,7 +156,7 @@ func writeFile(path string, gpgKey *gitopssecretsnappcloudiov1alpha1.GPGKey) err
 		_ = file.Close()
 	}()
 
-	_, err = file.WriteString("-----BEGIN PGP PRIVATE KEY BLOCK-----\n\n" + gpgKey.Spec.ArmoredPrivateKey + "\n-----END PGP PRIVATE KEY BLOCK-----")
+	_, err = file.WriteString("-----BEGIN PGP PRIVATE KEY BLOCK-----\n\n" + strings.TrimSpace(gpgKey.Spec.ArmoredPrivateKey) + "\n-----END PGP PRIVATE KEY BLOCK-----")
 	if err != nil {
 		return err
 	}

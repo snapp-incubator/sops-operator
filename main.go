@@ -52,13 +52,15 @@ func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
-	var requeueAfter int64
+	var SopsSecretRequeueAfter int64
+	var GPGKeyRequeueAfter int64
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-	flag.Int64Var(&requeueAfter, "requeue-decrypt-after", 5, "Requeue failed reconciliation in minutes (min 1).")
+	flag.Int64Var(&GPGKeyRequeueAfter, "gpgkey-requeue-after", 5, "Requeue failed reconciliation on sopsSecret decryption in minutes (min 1).")
+	flag.Int64Var(&SopsSecretRequeueAfter, "sopssecret-requeue-after", 5, "Requeue failed reconciliation on gpgkey imports in minutes (min 1).")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -80,13 +82,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	if requeueAfter < 1 {
-		requeueAfter = 1
+	if GPGKeyRequeueAfter < 1 {
+		GPGKeyRequeueAfter = 1
+	}
+	if SopsSecretRequeueAfter < 1 {
+		SopsSecretRequeueAfter = 1
 	}
 
 	if err = (&controllers.GPGKeyReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:       mgr.GetClient(),
+		Scheme:       mgr.GetScheme(),
+		Log:          ctrl.Log.WithName("controllers").WithName("GPGKey"),
+		RequeueAfter: GPGKeyRequeueAfter,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "GPGKey")
 		os.Exit(1)
@@ -95,7 +102,7 @@ func main() {
 		Client:       mgr.GetClient(),
 		Scheme:       mgr.GetScheme(),
 		Log:          ctrl.Log.WithName("controllers").WithName("SopsSecret"),
-		RequeueAfter: requeueAfter,
+		RequeueAfter: SopsSecretRequeueAfter,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "SopsSecret")
 		os.Exit(1)

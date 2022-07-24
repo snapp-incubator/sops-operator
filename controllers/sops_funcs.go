@@ -107,12 +107,9 @@ func DecryptWithGPGCustpm(key *pgp.MasterKey, passphrase string) ([]byte, error)
 }
 
 func decryptWithGPGBinaryCustom(key *pgp.MasterKey, passphrase string) ([]byte, error) {
-	args := []string{
-		"--pinentry-mode=loopback",
-		"--passphrase",
-		passphrase,
-		"--use-agent",
-		"-d",
+	args := []string{"--use-agent", "-d"}
+	if passphrase != "" {
+		args = append(args, []string{"--pinentry-mode=loopback", "--passphrase", passphrase}...)
 	}
 	cmd := exec.Command(gpgBinary(), args...)
 	var stdout, stderr bytes.Buffer
