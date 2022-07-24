@@ -11,6 +11,26 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /mutate-gitopssecret-snappcloud-io-v1alpha1-gpgkey
+  failurePolicy: Fail
+  name: mgpgkey.kb.io
+  rules:
+  - apiGroups:
+    - gitopssecret.snappcloud.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - gpgkeys
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
       path: /mutate-gitopssecret-snappcloud-io-v1alpha1-sopssecret
   failurePolicy: Fail
   name: msopssecret.kb.io
@@ -32,6 +52,26 @@ metadata:
   creationTimestamp: null
   name: validating-webhook-configuration
 webhooks:
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-gitopssecret-snappcloud-io-v1alpha1-gpgkey
+  failurePolicy: Fail
+  name: vgpgkey.kb.io
+  rules:
+  - apiGroups:
+    - gitopssecret.snappcloud.io
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - gpgkeys
+  sideEffects: None
 - admissionReviewVersions:
   - v1
   clientConfig:

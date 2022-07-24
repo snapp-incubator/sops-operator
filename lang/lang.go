@@ -10,6 +10,12 @@ var (
 
 	// ErrSopsSecretSpecNoData when SopsSecret object's Spec.SecretTemplate.Name is empty
 	ErrSopsSecretSpecNoData = "data or stringData can't be empty in SopsSecret object"
+
+	// ErrGPGKeySpecPassphraseLength when length of the provided password is not enough
+	ErrGPGKeySpecPassphraseLength = "passphrase length is not long enough"
+
+	// ErrGPGKeySpecArmoredPrivateKeyLength when length of the provided password is not enough
+	ErrGPGKeySpecArmoredPrivateKeyLength = "armored key length can't be zero"
 )
 
 // controller variables

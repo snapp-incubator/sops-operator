@@ -26,9 +26,9 @@ import (
 )
 
 // log is for logging in this package.
-var sopssecretlog = logf.Log.WithName("sopssecret-resource")
+var gpgkeylog = logf.Log.WithName("gpgkey-resource")
 
-func (r *SopsSecret) SetupWebhookWithManager(mgr ctrl.Manager) error {
+func (r *GPGKey) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(r).
 		Complete()
@@ -36,24 +36,26 @@ func (r *SopsSecret) SetupWebhookWithManager(mgr ctrl.Manager) error {
 
 // TODO(user): EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 
-//+kubebuilder:webhook:path=/mutate-gitopssecret-snappcloud-io-v1alpha1-sopssecret,mutating=true,failurePolicy=fail,sideEffects=None,groups=gitopssecret.snappcloud.io,resources=sopssecrets,verbs=create;update,versions=v1alpha1,name=msopssecret.kb.io,admissionReviewVersions=v1
+//+kubebuilder:webhook:path=/mutate-gitopssecret-snappcloud-io-v1alpha1-gpgkey,mutating=true,failurePolicy=fail,sideEffects=None,groups=gitopssecret.snappcloud.io,resources=gpgkeys,verbs=create;update,versions=v1alpha1,name=mgpgkey.kb.io,admissionReviewVersions=v1
 
-var _ webhook.Defaulter = &SopsSecret{}
+var _ webhook.Defaulter = &GPGKey{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type
-func (r *SopsSecret) Default() {
-	sopssecretlog.Info("default", "name", r.Name)
+func (r *GPGKey) Default() {
+	gpgkeylog.Info("default", "name", r.Name)
+
+	// TODO(user): fill in your defaulting logic.
 }
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
-//+kubebuilder:webhook:path=/validate-gitopssecret-snappcloud-io-v1alpha1-sopssecret,mutating=false,failurePolicy=fail,sideEffects=None,groups=gitopssecret.snappcloud.io,resources=sopssecrets,verbs=create;update,versions=v1alpha1,name=vsopssecret.kb.io,admissionReviewVersions=v1
+//+kubebuilder:webhook:path=/validate-gitopssecret-snappcloud-io-v1alpha1-gpgkey,mutating=false,failurePolicy=fail,sideEffects=None,groups=gitopssecret.snappcloud.io,resources=gpgkeys,verbs=create;update,versions=v1alpha1,name=vgpgkey.kb.io,admissionReviewVersions=v1
 
-var _ webhook.Validator = &SopsSecret{}
+var _ webhook.Validator = &GPGKey{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *SopsSecret) ValidateCreate() error {
-	sopssecretlog.Info("validate create", "name", r.Name)
-	if err := r.ValidateSopsSecret(); err != nil {
+func (r *GPGKey) ValidateCreate() error {
+	gpgkeylog.Info("validate create", "name", r.Name)
+	if err := r.ValidateGPGKey(); err != nil {
 		return err
 	}
 
@@ -62,9 +64,9 @@ func (r *SopsSecret) ValidateCreate() error {
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *SopsSecret) ValidateUpdate(old runtime.Object) error {
-	sopssecretlog.Info("validate update", "name", r.Name)
-	if err := r.ValidateSopsSecret(); err != nil {
+func (r *GPGKey) ValidateUpdate(old runtime.Object) error {
+	gpgkeylog.Info("validate update", "name", r.Name)
+	if err := r.ValidateGPGKey(); err != nil {
 		return err
 	}
 
@@ -73,22 +75,19 @@ func (r *SopsSecret) ValidateUpdate(old runtime.Object) error {
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *SopsSecret) ValidateDelete() error {
-	sopssecretlog.Info("validate delete", "name", r.Name)
+func (r *GPGKey) ValidateDelete() error {
+	gpgkeylog.Info("validate delete", "name", r.Name)
 
 	// TODO(user): fill in your validation logic upon object deletion.
 	return nil
 }
 
-func (r *SopsSecret) ValidateSopsSecret() error {
-	if r.Spec.GPGKeyRefName == "" {
-		return fmt.Errorf(lang.ErrSopsSecretSpecGPGKeyRefNameEmpty)
+func (r *GPGKey) ValidateGPGKey() error {
+	if len(r.Spec.Passphrase) < 4 {
+		return fmt.Errorf(lang.ErrGPGKeySpecPassphraseLength)
 	}
-	if r.Spec.SecretTemplate.Name == "" {
-		return fmt.Errorf(lang.ErrSopsSecretSpecSecretTemplateNameEmpty)
-	}
-	if len(r.Spec.SecretTemplate.Data) == 0 && len(r.Spec.SecretTemplate.StringData) == 0 {
-		return fmt.Errorf(lang.ErrSopsSecretSpecNoData)
+	if r.Spec.ArmoredPrivateKey == "" {
+		return fmt.Errorf(lang.ErrGPGKeySpecArmoredPrivateKeyLength)
 	}
 	return nil
 }
