@@ -46,52 +46,15 @@ var _ = Describe("SopsSecret webhook", func() {
 	})
 
 	Context("When creating a SopsSecret", func() {
-		It("Should fail if SecretTemplate is empty", func() {
-			By("Creating a SopsSecret with empty Spec.secretTemplate")
-			fooSopsSecretObj := &SopsSecret{
-				TypeMeta:   foosopsSecretMeta.TypeMeta,
-				ObjectMeta: foosopsSecretMeta.ObjectMeta,
-				Spec: SopsSecretSpec{
-					Suspend:        false,
-					GPGKeyRefName:  fooSopsSecretGPGKeyRefName,
-					SecretTemplate: SopsSecretTemplate{},
-				},
-			}
-			err = k8sClient.Create(ctx, fooSopsSecretObj)
-			Expect(err).NotTo(BeNil())
-			Expect(string(errors.ReasonForError(err))).Should(Equal(lang.ErrSopsSecretSpecSecretTemplateNameEmpty))
-		})
-
-		It("Should fail if SecretTemplate.Name is empty", func() {
-			By("Creating a SopsSecret with empty Spec.secretTemplate.Name")
+		It("Should fail if stringData is empty", func() {
+			By("Creating a SopsSecret with empty Spec.stringData")
 			fooSopsSecretObj := &SopsSecret{
 				TypeMeta:   foosopsSecretMeta.TypeMeta,
 				ObjectMeta: foosopsSecretMeta.ObjectMeta,
 				Spec: SopsSecretSpec{
 					Suspend:       false,
 					GPGKeyRefName: fooSopsSecretGPGKeyRefName,
-					SecretTemplate: SopsSecretTemplate{
-						Name:       "",
-						StringData: fooSopsSecretStringData,
-					},
-				},
-			}
-			err = k8sClient.Create(ctx, fooSopsSecretObj)
-			Expect(err).NotTo(BeNil())
-			Expect(string(errors.ReasonForError(err))).Should(Equal(lang.ErrSopsSecretSpecSecretTemplateNameEmpty))
-		})
-
-		It("Should fail if SecretTemplate Data fields are empty", func() {
-			By("Creating a SopsSecret with empty Spec.secretTemplate.Data and Spec.secretTemplate.StringData ")
-			fooSopsSecretObj := &SopsSecret{
-				TypeMeta:   foosopsSecretMeta.TypeMeta,
-				ObjectMeta: foosopsSecretMeta.ObjectMeta,
-				Spec: SopsSecretSpec{
-					Suspend:       false,
-					GPGKeyRefName: fooSopsSecretGPGKeyRefName,
-					SecretTemplate: SopsSecretTemplate{
-						Name: "foo-sops",
-					},
+					StringData:    map[string]string{},
 				},
 			}
 			err = k8sClient.Create(ctx, fooSopsSecretObj)
@@ -105,11 +68,8 @@ var _ = Describe("SopsSecret webhook", func() {
 				TypeMeta:   foosopsSecretMeta.TypeMeta,
 				ObjectMeta: foosopsSecretMeta.ObjectMeta,
 				Spec: SopsSecretSpec{
-					Suspend: false,
-					SecretTemplate: SopsSecretTemplate{
-						Name:       "foo-sops",
-						StringData: fooSopsSecretStringData,
-					},
+					Suspend:    false,
+					StringData: fooSopsSecretStringData,
 				},
 			}
 			err = k8sClient.Create(ctx, fooSopsSecretObj)
@@ -124,10 +84,7 @@ var _ = Describe("SopsSecret webhook", func() {
 				ObjectMeta: foosopsSecretMeta.ObjectMeta,
 				Spec: SopsSecretSpec{
 					GPGKeyRefName: fooSopsSecretGPGKeyRefName,
-					SecretTemplate: SopsSecretTemplate{
-						Name:       "bar-sops",
-						StringData: fooSopsSecretStringData,
-					},
+					StringData:    fooSopsSecretStringData,
 				},
 			}
 			err = k8sClient.Create(ctx, barSopsSecretObj)
@@ -136,6 +93,5 @@ var _ = Describe("SopsSecret webhook", func() {
 			err = k8sClient.Get(ctx, sopsLookupKey, barSopsSecretObj)
 			Expect(barSopsSecretObj.Spec.Suspend).To(BeFalse())
 		})
-
 	})
 })

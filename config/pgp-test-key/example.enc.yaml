@@ -1,48 +1,48 @@
 apiVersion: gitopssecret.snappcloud.io/v1alpha1
 kind: SopsSecret
 metadata:
-    name: example-sopssecret
+    name: example-secret
     namespace: default
+    labels:
+        key_label1: label_value1
+    annotation:
+        key_annotation1: value_annotation1
 spec:
     # suspend reconciliation of the sops secret object
     suspend: false
     gpg_key_ref_name: gpgkey-sample
-    secretTemplate:
-        name: ENC[AES256_GCM,data:tEBmzhJbodOA76g=,iv:6//MD4pDQfIy8Kv78hclFvNV66TtoMHjfvuEpz+e0S4=,tag:4ipcrSNzT0hC2AbwFVOM3g==,type:str]
-        labels:
-            label1: ENC[AES256_GCM,data:y8KHycCN,iv:oKHcGLt7Jebw2RgvM2Qt2Io2JLuNaIQaKGRc2VORoSU=,tag:vIzI6DZuxbuV9NYlxtH6pw==,type:str]
-        annotations:
-            key1: ENC[AES256_GCM,data:uYGKNxKR,iv:9SV+4fo953YWpNF7OJ1omlDLFqdzIa5FZgMB44ByoRI=,tag:IciLh0ZnOqXu4s5h37ifrQ==,type:str]
-        stringData:
-            data-name0: ENC[AES256_GCM,data:6qkxKf4JgwjKI/U=,iv:yTBuOJXE5LdS3pLoMK471jvJCJ/tbB8ThMBGDMyAVLo=,tag:z6WPut+ao+icvduPfOhyFA==,type:str]
-        data:
-            data-name1: ENC[AES256_GCM,data:85nJ+u9Y7ZuPn1RbFriR7A==,iv:AF9jEf1N7cFzbtsaCU3j2+LEaxY2fgBZwE9/dW1aDAo=,tag:7TijpGr/X+ZSFEPQ637Tvg==,type:str]
+    stringData:
+        data-name0: ENC[AES256_GCM,data:PmuiVIg4F9dQhIQ=,iv:tEDOolEUsPzrA+Wzp9Lb3IICIDQ6Jvw8RoI552/mQWE=,tag:i4sHuhcpFcn2HyQwYVGf9Q==,type:str]
+        data-name1: ENC[AES256_GCM,data:0XCSZ6BPQSRZrf4=,iv:epIbC+eGsk7GKZ/N/MFydSsRzz16opo+tNSCX8xwG1w=,tag:nwa58+H3D93E61gheQ3esw==,type:str]
 sops:
     kms: []
     gcp_kms: []
     azure_kv: []
     hc_vault: []
     age: []
-    lastmodified: "2022-07-23T05:24:52Z"
-    mac: ENC[AES256_GCM,data:Hp1SMmxPoNp69WgzclSQejsAwXKoaFJpH7jbOrIP1caDodbw2XY3tEU6KiWKwzK85OFS3+VLKFKyUsjOxEGFk0dr0jMGHoZVkVp3N9lbIM5evkYKv7fwyNLv4wevdNZJenTUHavzmY7hwmB8i4VklOm3ZoN6k4j+Srnub+C+6UE=,iv:zIwLmq+e6vxNkb+59ZYsCa/Bibw2TZw6mXYl0IqEkRg=,tag:jvrP8zZg1kBcbtjHsvujfw==,type:str]
+    lastmodified: "2022-07-26T12:26:16Z"
+    mac: ENC[AES256_GCM,data:2VNCvvoQ/5QAbOhi+gTGeS0+wcODVtTwYUb2lTcWuc64uQC2ioJLuVp16DVkrCNieCrRd3+tK3JBDFThj8MHDAnb1kyUkSjuw5ZReoRWuPG3wsPmuPkaZ+4SdJgvzdslEDvyEcLnXe1ow6INEBVjVFOuEBPmqb7JSPzIEG8ACCg=,iv:vhfDw1T317dr970zr1KtwQGydc792hY4xOmup0OHfow=,tag:IkFekcqAxWSVH34M2XGEgQ==,type:str]
     pgp:
-        - created_at: "2022-07-23T05:24:50Z"
+        - created_at: "2022-07-26T12:26:15Z"
           enc: |
             -----BEGIN PGP MESSAGE-----
 
-            hQGMA1lXVE3eM3FuAQwAo9eF9/ZWev2YyTBL2X0H7Mpjy4fl5iU+kNEpewCiriJF
-            XKnaEBtFwYtfCnSdwePL2kmHYtZQYizZHltzfJXcmRNv/Slg5ud+bWfqmuDYyYyW
-            4Fz0IHoJNtbOsyKZbtN0o0UGklKeREgj/gVYJaJMHzxNni+NNfZbZPGB/F35mD0k
-            jNo2SzsNOIuOcEUps4DqNyfvJrTZzGXS8iCbOTOQq9L/9Q50FmEnyODU5V7Opw+m
-            zUlEEBa5QluaS9idXuoYE3wEU0gdKLxoNHtGBhmzX2WNs8fc4rzh5FawU7A2UaAd
-            HA4+cnfWwkVVVdmo57gFCoBFJYu3oS+04rdRT8PBkbDYokMmQH36SJdW8lm2bXW8
-            BJovNIlO5ap1JDXgi8sAwV3naeNTyk9fwJe7bifnJBZNl1lRSnMUBM/mOOnCw+Gi
-            fND8WHZf2k9yKt53ixYE4ru5gFaHBTT/prHtQ5/2hMYL/Frd5rQGHiS2paWbuDXU
-            tqj2KXLditkSFmraqxNJ1GgBCQIQepmpMZCaP3RALowvpxnCh47koRfkUFj9SmcZ
-            YtB3RZwpcVAB+x1b8aF7BHqHQ5xlGN1Ne/wwOE9Q0NnQoXX3Y5YugvDr5rDB1dRQ
-            ftggTuaiyeyeIcyztvWKQHnIc8VuNdinLQ==
-            =3hwF
+            hQIMA0IdHboLn5ZuARAAkhHicVaHQlA7D0HPJT0/Z1a3TP855wQClAtQt+cM6jiU
+            Rz7W13h2hjN21o+6IWWZV5ITA2zlIKLE0isz8peQ8wIgLZ96dl6N3DR0z/xM4Gr2
+            /GylQOxR6kewHYD/H2/FTJXeZ9q1bIk7wCi2RLXTQtM8KPyxiBPNbzb57QYUL/vo
+            WsoflVma10B1kZZuEl3g9HvmldF2FTysSBKbzTaQhkPIeezhZYAddkSeoZnNF5HA
+            4BqeN30W6BJYqHfcI0bbyzT9c3vh4KSgn0SVMlbAqxNFedUDhk+r1d3Q5/3Q7E50
+            4Xq5jtpD09sva+8wxQfN3NmsZZJSDujwwPHziN88EbDT+yR6WZz2TdVjsgBl1W2h
+            0KAdou8rzXn3Iiib6yRtzvMYrvRJCJYBul/YZcvD8U/mpgRORXlC6USowkh+nDbL
+            Yl97JZEMJy1AVys3s6l1I6MFcuiez3BH80E0EvwHFxW//fpIP56eOEX2CAsCYglw
+            hKcwpb683zfikXo7NPt4G/pGx09xQha4NpBU1ZK95B/z+XKsEEJY0cdcFsE+bXZK
+            ZGxaCDn2aNxTghEBUzinAEsQ+GkIyeZw+vNvL3x2v+3h2JjiUBuCqxBfQZ127CGH
+            1z6M1RlaoCqwcttz9IHNObBZ4bBnjaqHENzz0Qr1QWW9vVltit+e3fPZY5I1bFHU
+            aAEJAhDduTWxx3JMQWnJXqExQUScdS19n5pb2QQ4lwRVQ0Z8QOblQjlb67cN4NjJ
+            0hBZ5auKDhEcfCtzLEQ8P2fu9hC5XsXsYrdsz1SGpiLL5fipy0CQxFWp71DusSsJ
+            fWmBLgUYyIi2
+            =oNhH
             -----END PGP MESSAGE-----
-          fp: 0DCAB05D8154DFF66266FD1D32E6EC2AD915FA4D
-    encrypted_suffix: secretTemplate
+          fp: 32B974509BC4B9DD570AB0E8067EBF5DA6F0220A
+    encrypted_suffix: stringData
     version: 3.7.2

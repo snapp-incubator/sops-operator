@@ -7,6 +7,7 @@ import (
 	"github.com/snapp-incubator/sops-operator/lang"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"strings"
 )
 
 var _ = Describe("GPGKey webhook", func() {
@@ -15,14 +16,16 @@ var _ = Describe("GPGKey webhook", func() {
 		fooGPGKeyNamespace = "default"
 
 		wrongPassword0   = ""
-		wrongPassword1   = "a"
-		correctPassword0 = "test2"
+		wrongPassword1   = "password"
+		correctPassword0 = "qwerP@ssw0rdasdf12345"
 
-		armoredKey = "fake-data"
+		wrongArmoredKey0 = ""
+		wrongArmoredKey1 = "fake-data"
 	)
 	var (
-		err error
-		ctx = context.Background()
+		correctArmoredKey1 = strings.Repeat("a", 1024)
+		err                error
+		ctx                = context.Background()
 	)
 
 	gpgKeyTypeMeta := metav1.TypeMeta{
@@ -45,6 +48,35 @@ var _ = Describe("GPGKey webhook", func() {
 		}
 	})
 
+	Context("Testing Password Validator", func() {
+		It("Should return error on weak passwords", func() {
+			passwordValidatorObj := GetPasswordValidator()
+
+			By("testing on weak passwords")
+			weakPasswords := []string{
+				"hello",
+				"password",
+				"P@ssw0rd",
+				"1234",
+				"helloworld",
+			}
+			for _, pass := range weakPasswords {
+				err := passwordValidatorObj.Validate(pass)
+				Expect(err).NotTo(BeNil())
+			}
+
+			By("testing on strong passwords")
+			strongPasswords := []string{
+				"qwerP@ssw0rdasdf12345",
+				"qwedfsswzzrdas:df1W3U5",
+			}
+			for _, pass := range strongPasswords {
+				err := passwordValidatorObj.Validate(pass)
+				Expect(err).To(BeNil())
+			}
+		})
+	})
+
 	Context("When creating a GPGKey", func() {
 		It("Should fail if passphrase has problem", func() {
 			By("Creating a password with length of zero")
@@ -52,7 +84,7 @@ var _ = Describe("GPGKey webhook", func() {
 				TypeMeta:   fooGPGKeyMeta.TypeMeta,
 				ObjectMeta: fooGPGKeyMeta.ObjectMeta,
 				Spec: GPGKeySpec{
-					ArmoredPrivateKey: armoredKey,
+					ArmoredPrivateKey: correctArmoredKey1,
 					Passphrase:        wrongPassword0,
 				},
 			}
@@ -60,12 +92,12 @@ var _ = Describe("GPGKey webhook", func() {
 			Expect(err).NotTo(BeNil())
 			Expect(string(errors.ReasonForError(err))).Should(Equal(lang.ErrGPGKeySpecPassphraseLength))
 
-			By("Creating a password with length of one")
+			By("Creating a password with length lower than minimum expected")
 			barGPGKeyObj := &GPGKey{
 				TypeMeta:   fooGPGKeyMeta.TypeMeta,
 				ObjectMeta: fooGPGKeyMeta.ObjectMeta,
 				Spec: GPGKeySpec{
-					ArmoredPrivateKey: armoredKey,
+					ArmoredPrivateKey: correctArmoredKey1,
 					Passphrase:        wrongPassword1,
 				},
 			}
@@ -95,12 +127,40 @@ var _ = Describe("GPGKey webhook", func() {
 				TypeMeta:   fooGPGKeyMeta.TypeMeta,
 				ObjectMeta: fooGPGKeyMeta.ObjectMeta,
 				Spec: GPGKeySpec{
-					ArmoredPrivateKey: armoredKey,
+					ArmoredPrivateKey: correctArmoredKey1,
 					Passphrase:        correctPassword0,
 				},
 			}
 			err = k8sClient.Create(ctx, fooGPGKeyObj)
 			Expect(err).To(BeNil())
+		})
+	})
+
+	Context("When creating a GPGKey", func() {
+		It("Should fail if armoredPrivateKey is not ok", func() {
+			By("Creating a GPGKey with empty Private Key")
+			fooGPGKeyObj := &GPGKey{
+				TypeMeta:   fooGPGKeyMeta.TypeMeta,
+				ObjectMeta: fooGPGKeyMeta.ObjectMeta,
+				Spec: GPGKeySpec{
+					ArmoredPrivateKey: wrongArmoredKey0,
+					Passphrase:        correctPassword0,
+				},
+			}
+			err = k8sClient.Create(ctx, fooGPGKeyObj)
+			Expect(err).NotTo(BeNil())
+
+			By("Creating a GPGKey with length of Private Key lower than the minimum expected")
+			barGPGKeyObj := &GPGKey{
+				TypeMeta:   fooGPGKeyMeta.TypeMeta,
+				ObjectMeta: fooGPGKeyMeta.ObjectMeta,
+				Spec: GPGKeySpec{
+					ArmoredPrivateKey: wrongArmoredKey1,
+					Passphrase:        correctPassword0,
+				},
+			}
+			err = k8sClient.Create(ctx, barGPGKeyObj)
+			Expect(err).NotTo(BeNil())
 		})
 	})
 })

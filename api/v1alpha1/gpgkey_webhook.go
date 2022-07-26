@@ -17,16 +17,22 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"errors"
 	"fmt"
+	passwordValidator "github.com/go-passwd/validator"
 	"github.com/snapp-incubator/sops-operator/lang"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"strings"
 )
 
 // log is for logging in this package.
-var gpgkeylog = logf.Log.WithName("gpgkey-resource")
+var (
+	gpgKeyLog                        = logf.Log.WithName("gpgkey-resource")
+	gPGKeyArmoredPrivateKeyMinLength = 1024
+)
 
 func (r *GPGKey) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
@@ -42,7 +48,7 @@ var _ webhook.Defaulter = &GPGKey{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type
 func (r *GPGKey) Default() {
-	gpgkeylog.Info("default", "name", r.Name)
+	gpgKeyLog.Info("default", "name", r.Name)
 
 	// TODO(user): fill in your defaulting logic.
 }
@@ -54,7 +60,7 @@ var _ webhook.Validator = &GPGKey{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *GPGKey) ValidateCreate() error {
-	gpgkeylog.Info("validate create", "name", r.Name)
+	gpgKeyLog.Info("validate create", "name", r.Name)
 	if err := r.ValidateGPGKey(); err != nil {
 		return err
 	}
@@ -65,7 +71,7 @@ func (r *GPGKey) ValidateCreate() error {
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *GPGKey) ValidateUpdate(old runtime.Object) error {
-	gpgkeylog.Info("validate update", "name", r.Name)
+	gpgKeyLog.Info("validate update", "name", r.Name)
 	if err := r.ValidateGPGKey(); err != nil {
 		return err
 	}
@@ -76,18 +82,30 @@ func (r *GPGKey) ValidateUpdate(old runtime.Object) error {
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
 func (r *GPGKey) ValidateDelete() error {
-	gpgkeylog.Info("validate delete", "name", r.Name)
+	gpgKeyLog.Info("validate delete", "name", r.Name)
 
 	// TODO(user): fill in your validation logic upon object deletion.
 	return nil
 }
 
 func (r *GPGKey) ValidateGPGKey() error {
-	if len(r.Spec.Passphrase) < 4 {
-		return fmt.Errorf(lang.ErrGPGKeySpecPassphraseLength)
+	passValidObj := GetPasswordValidator()
+	if err := passValidObj.Validate(r.Spec.Passphrase); err != nil {
+		return err
 	}
-	if r.Spec.ArmoredPrivateKey == "" {
+	trimedArmoredPrivateKey := strings.TrimSpace(r.Spec.ArmoredPrivateKey)
+	if len(trimedArmoredPrivateKey) < gPGKeyArmoredPrivateKeyMinLength {
 		return fmt.Errorf(lang.ErrGPGKeySpecArmoredPrivateKeyLength)
+	} else if strings.HasPrefix(trimedArmoredPrivateKey, "----") || strings.HasSuffix(trimedArmoredPrivateKey, "----") {
+		return fmt.Errorf(lang.ErrGPGKeySpecArmoredPrivateKeyPrefixSuffix)
 	}
 	return nil
+}
+
+func GetPasswordValidator() *passwordValidator.Validator {
+	return passwordValidator.New(
+		passwordValidator.MinLength(14, errors.New(lang.ErrGPGKeySpecPassphraseLength)),
+		passwordValidator.MaxLength(100, errors.New(lang.ErrGPGKeySpecPassphraseLength)),
+		passwordValidator.CommonPassword(errors.New(lang.ErrGPGKeySpecPassphraseCommon)),
+	)
 }

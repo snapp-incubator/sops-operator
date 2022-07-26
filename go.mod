@@ -5,6 +5,7 @@ go 1.17
 require (
 	github.com/fatih/color v1.13.0
 	github.com/go-logr/logr v1.2.0
+	github.com/go-passwd/validator v0.0.0-20180902184246-0b4c967e436b
 	github.com/goware/prefixer v0.0.0-20160118172347-395022866408
 	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/onsi/ginkgo v1.16.5

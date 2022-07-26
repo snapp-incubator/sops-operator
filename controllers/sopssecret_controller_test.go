@@ -53,10 +53,10 @@ var _ = Describe("", func() {
 	})
 
 	const (
-		GPGKeyRefName          = "gpgkey-sample"
-		GPGKeyRefUnsafeName    = "gpgkey-unsafe"
-		SopsSecretTemplateName = "test-secret"
-		SopsSecretNamespace    = "default"
+		GPGKeyRefName       = "gpgkey-sample"
+		GPGKeyRefUnsafeName = "gpgkey-unsafe"
+		SopsSecretName      = "example-secret"
+		SopsSecretNamespace = "default"
 
 		timeout   = time.Second * 360
 		sleepTime = time.Second * 3
@@ -79,7 +79,7 @@ var _ = Describe("", func() {
 
 			By("By checking data values")
 			testSecret := &corev1.Secret{}
-			targetSecretNamespacedName := &types.NamespacedName{Namespace: SopsSecretNamespace, Name: SopsSecretTemplateName}
+			targetSecretNamespacedName := &types.NamespacedName{Namespace: SopsSecretNamespace, Name: SopsSecretName}
 			Expect(controller.K8sClient.Get(ctx, *targetSecretNamespacedName, testSecret)).NotTo(Succeed())
 			time.Sleep(sleepTime)
 
@@ -104,14 +104,14 @@ var _ = Describe("", func() {
 
 			By("By checking data values")
 			testSecret := &corev1.Secret{}
-			targetSecretNamespacedName := &types.NamespacedName{Namespace: SopsSecretNamespace, Name: SopsSecretTemplateName}
+			targetSecretNamespacedName := &types.NamespacedName{Namespace: SopsSecretNamespace, Name: SopsSecretName}
 			Expect(controller.K8sClient.Get(ctx, *targetSecretNamespacedName, testSecret)).To(Succeed())
 			Expect(string(testSecret.Data["data-name0"])).To(Equal("data-value0"))
 			Expect(string(testSecret.Data["data-name1"])).To(Equal("data-value1"))
 
 			By("By removing secret template from SopsSecret must remove managed k8s secret")
 			testSecret = &corev1.Secret{}
-			targetSecretNamespacedName = &types.NamespacedName{Namespace: SopsSecretNamespace, Name: SopsSecretTemplateName}
+			targetSecretNamespacedName = &types.NamespacedName{Namespace: SopsSecretNamespace, Name: SopsSecretName}
 			Expect(controller.K8sClient.Get(ctx, *targetSecretNamespacedName, testSecret)).To(Succeed())
 			Expect(controller.K8sClient.Delete(ctx, testSecret)).To(Succeed())
 			time.Sleep(10 * time.Second)

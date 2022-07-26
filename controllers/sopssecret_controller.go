@@ -18,7 +18,6 @@ package controllers
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/snapp-incubator/sops-operator/lang"
@@ -94,9 +93,9 @@ func (r *SopsSecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	// Iterate over secret templates
 	r.Log.Info("Entering template data loop", "sopssecret", req.NamespacedName)
-	secretTemplate := plainTextSopsSecret.Spec.SecretTemplate
+	stringData := plainTextSopsSecret.Spec.StringData
 
-	kubeSecretFromTemplate, rescheduleReconcileLoop := r.newKubeSecretFromTemplate(req, encryptedSopsSecret, plainTextSopsSecret, &secretTemplate)
+	kubeSecretFromTemplate, rescheduleReconcileLoop := r.newKubeSecretFromTemplate(req, encryptedSopsSecret, plainTextSopsSecret, &stringData)
 	if rescheduleReconcileLoop {
 		return reconcile.Result{Requeue: true, RequeueAfter: time.Duration(r.RequeueAfter) * time.Minute}, nil
 	}
@@ -132,6 +131,7 @@ func (r *SopsSecretReconciler) getGPGKeyRefNameObj(
 	namespacedName := types.NamespacedName{Namespace: req.Namespace, Name: encryptedSopsSecret.Spec.GPGKeyRefName}
 	err := r.Get(ctx, namespacedName, gpgkey)
 	if err != nil {
+		r.Log.Info("Error fetching GPGKey", "GPGKey", namespacedName, "error", err)
 		encryptedSopsSecret.Status.Message = lang.ErrGPGKeyRefFetchFail
 		_ = r.Status().Update(ctx, encryptedSopsSecret)
 		return nil, true
@@ -270,11 +270,11 @@ func (r *SopsSecretReconciler) newKubeSecretFromTemplate(
 	req ctrl.Request,
 	encryptedSopsSecret *gitopssecretsnappcloudiov1alpha1.SopsSecret,
 	plainTextSopsSecret *gitopssecretsnappcloudiov1alpha1.SopsSecret,
-	secretTemplate *gitopssecretsnappcloudiov1alpha1.SopsSecretTemplate,
+	stringData *map[string]string,
 ) (*corev1.Secret, bool) {
 
 	// Define a new secret object
-	kubeSecretFromTemplate, err := createKubeSecretFromTemplate(plainTextSopsSecret, secretTemplate, r.Log)
+	kubeSecretFromTemplate, err := createKubeSecretFromTemplate(plainTextSopsSecret, stringData, r.Log)
 	if err != nil {
 		encryptedSopsSecret.Status.Message = "New child secret creation error"
 		r.Status().Update(context.Background(), encryptedSopsSecret)
@@ -379,38 +379,29 @@ func (r *SopsSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // createKubeSecretFromTemplate returns new Kubernetes secret object, created from decrypted SopsSecret Template
 func createKubeSecretFromTemplate(
 	sopsSecret *gitopssecretsnappcloudiov1alpha1.SopsSecret,
-	sopsSecretTemplate *gitopssecretsnappcloudiov1alpha1.SopsSecretTemplate,
+	stringData *map[string]string,
 	logger logr.Logger,
 ) (*corev1.Secret, error) {
-	if sopsSecretTemplate.Name == "" {
-		return nil, fmt.Errorf("createKubeSecretFromTemplate(): secret template name must be specified and not empty string")
-	}
-
-	strData, err := cloneTemplateData(sopsSecretTemplate.StringData, sopsSecretTemplate.Data)
-	if err != nil {
-		return nil, err
-	}
-
-	kubeSecretType := getSecretType(sopsSecretTemplate.Type)
-	labels := cloneMap(sopsSecretTemplate.Labels)
-	annotations := cloneMap(sopsSecretTemplate.Annotations)
+	kubeSecretType := "Opaque"
+	labels := cloneMap(sopsSecret.Labels)
+	annotations := cloneMap(sopsSecret.Annotations)
 
 	logger.Info("Processing",
 		"sopssecret", fmt.Sprintf("%s.%s.%s", sopsSecret.Kind, sopsSecret.APIVersion, sopsSecret.Name),
-		"type", sopsSecretTemplate.Type,
+		"type", kubeSecretType,
 		"namespace", sopsSecret.Namespace,
-		"templateItem", fmt.Sprintf("secret/%s", sopsSecretTemplate.Name),
+		"templateItem", fmt.Sprintf("secret/%s", sopsSecret.Name),
 	)
 
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        sopsSecretTemplate.Name,
+			Name:        sopsSecret.Name,
 			Namespace:   sopsSecret.Namespace,
 			Labels:      labels,
 			Annotations: annotations,
 		},
-		Type:       kubeSecretType,
-		StringData: strData,
+		Type:       corev1.SecretType(kubeSecretType),
+		StringData: *stringData,
 	}
 	return secret, nil
 }
@@ -423,19 +414,6 @@ func cloneMap(oldMap map[string]string) map[string]string {
 	}
 
 	return newMap
-}
-
-// add both StringData and Data to strData
-func cloneTemplateData(stringData map[string]string, data map[string]string) (map[string]string, error) {
-	strData := cloneMap(stringData)
-	for key, value := range data {
-		decoded, err := base64.StdEncoding.DecodeString(value)
-		if err != nil {
-			return nil, fmt.Errorf("createKubeSecretFromTemplate(): data[%v] is not a valid base64 string", key)
-		}
-		strData[key] = string(decoded)
-	}
-	return strData, nil
 }
 
 func getSecretType(templateSecretType string) corev1.SecretType {

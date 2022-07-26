@@ -26,44 +26,14 @@ const (
 	SopsSecretManagedAnnotation = "gitops-controller.snappcloud.io/managed"
 )
 
-// SopsSecretTemplate defines the map of secrets to create
-type SopsSecretTemplate struct {
-	// Name of the Kubernetes secret to create
-	// +kubebuilder:validation:Required
-	Name string `json:"name"`
-
-	// Annotations to apply to Kubernetes secret
-	// +kubebuilder:validation:Optional
-	Annotations map[string]string `json:"annotations,omitempty"`
-
-	// Labels to apply to Kubernetes secret
-	// +kubebuilder:validation:Optional
-	Labels map[string]string `json:"labels,omitempty"`
-
-	// Kubernetes secret type. Default: Opaque. Possible values: Opaque,
-	// kubernetes.io/service-account-token, kubernetes.io/dockercfg,
-	// kubernetes.io/dockerconfigjson, kubernetes.io/basic-auth,
-	// kubernetes.io/ssh-auth, kubernetes.io/tls, bootstrap.kubernetes.io/token
-	// +kubebuilder:validation:Optional
-	Type string `json:"type,omitempty"`
-
-	// Data map to use in Kubernetes secret (equivalent to Kubernetes Secret object data, please see for more
-	// information: https://kubernetes.io/docs/concepts/configuration/secret/#overview-of-secrets)
-	// +kubebuilder:validation:Optional
-	Data map[string]string `json:"data,omitempty"`
-
-	// stringData map to use in Kubernetes secret (equivalent to Kubernetes Secret object stringData, please see for more
-	// information: https://kubernetes.io/docs/concepts/configuration/secret/#overview-of-secrets)
-	// +kubebuilder:validation:Optional
-	StringData map[string]string `json:"stringData,omitempty"`
-}
-
 // SopsSecretSpec defines the desired state of SopsSecret
 type SopsSecretSpec struct {
 	// +kubebuilder:validation:Required
-	SecretTemplate SopsSecretTemplate `json:"secretTemplate,omitempty"`
+	StringData map[string]string `json:"stringData,omitempty"`
 	// +kubebuilder:validation:Required
 	GPGKeyRefName string `json:"gpg_key_ref_name"`
+	// +kubebuilder:validation:Optional
+	Type string `json:"type,omitempty"`
 	// +kubebuilder:validation:Optional
 	Suspend bool `json:"suspend,omitempty"`
 }

@@ -84,10 +84,7 @@ func (r *SopsSecret) ValidateSopsSecret() error {
 	if r.Spec.GPGKeyRefName == "" {
 		return fmt.Errorf(lang.ErrSopsSecretSpecGPGKeyRefNameEmpty)
 	}
-	if r.Spec.SecretTemplate.Name == "" {
-		return fmt.Errorf(lang.ErrSopsSecretSpecSecretTemplateNameEmpty)
-	}
-	if len(r.Spec.SecretTemplate.Data) == 0 && len(r.Spec.SecretTemplate.StringData) == 0 {
+	if len(r.Spec.StringData) == 0 {
 		return fmt.Errorf(lang.ErrSopsSecretSpecNoData)
 	}
 	return nil
