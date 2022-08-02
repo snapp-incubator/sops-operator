@@ -164,7 +164,7 @@ func (r *SopsSecretReconciler) isKubeSecretManagedOrAnnotatedToBeManaged(
 	// kubeSecretFromTemplate found - perform ownership check
 	if !metav1.IsControlledBy(kubeSecretInCluster, encryptedSopsSecret) && !isAnnotatedToBeManaged(kubeSecretInCluster) {
 		encryptedSopsSecret.Status.Message = "Child secret is not owned by controller error"
-		r.Status().Update(context.Background(), encryptedSopsSecret)
+		_ = r.Status().Update(context.Background(), encryptedSopsSecret)
 
 		r.Log.Info(
 			"Child secret is not owned by controller or sopssecret Error",
@@ -203,7 +203,7 @@ func (r *SopsSecretReconciler) refreshKubeSecretIfNeeded(
 		)
 		if err := r.Update(ctx, copyOfKubeSecretInCluster); err != nil {
 			encryptedSopsSecret.Status.Message = "Child secret update error"
-			r.Status().Update(context.Background(), encryptedSopsSecret)
+			_ = r.Status().Update(context.Background(), encryptedSopsSecret)
 
 			r.Log.Info(
 				"Child secret update error",
@@ -253,7 +253,7 @@ func (r *SopsSecretReconciler) getSecretFromClusterOrCreateFromTemplate(
 	// Unknown error while trying to find kubeSecretFromTemplate in cluster - reschedule reconciliation
 	if err != nil {
 		encryptedSopsSecret.Status.Message = "Unknown Error"
-		r.Status().Update(context.Background(), encryptedSopsSecret)
+		_ = r.Status().Update(context.Background(), encryptedSopsSecret)
 
 		r.Log.Info(
 			"Unknown Error",
@@ -277,7 +277,7 @@ func (r *SopsSecretReconciler) newKubeSecretFromTemplate(
 	kubeSecretFromTemplate, err := createKubeSecretFromTemplate(plainTextSopsSecret, stringData, r.Log)
 	if err != nil {
 		encryptedSopsSecret.Status.Message = "New child secret creation error"
-		r.Status().Update(context.Background(), encryptedSopsSecret)
+		_ = r.Status().Update(context.Background(), encryptedSopsSecret)
 
 		r.Log.Info(
 			"New child secret creation error",
@@ -291,7 +291,7 @@ func (r *SopsSecretReconciler) newKubeSecretFromTemplate(
 	err = controllerutil.SetControllerReference(encryptedSopsSecret, kubeSecretFromTemplate, r.Scheme)
 	if err != nil {
 		encryptedSopsSecret.Status.Message = "Setting controller ownership of the child secret error"
-		r.Status().Update(context.Background(), encryptedSopsSecret)
+		_ = r.Status().Update(context.Background(), encryptedSopsSecret)
 
 		r.Log.Info(
 			"Setting controller ownership of the child secret error",
@@ -316,7 +316,7 @@ func (r *SopsSecretReconciler) isSecretSuspended(
 		)
 
 		encryptedSopsSecret.Status.Message = "Reconciliation is suspended"
-		r.Status().Update(context.Background(), encryptedSopsSecret)
+		_ = r.Status().Update(context.Background(), encryptedSopsSecret)
 
 		return true
 	}
@@ -414,31 +414,6 @@ func cloneMap(oldMap map[string]string) map[string]string {
 	}
 
 	return newMap
-}
-
-func getSecretType(templateSecretType string) corev1.SecretType {
-	var kubeSecretType corev1.SecretType
-
-	switch templateSecretType {
-	case "kubernetes.io/service-account-token":
-		kubeSecretType = corev1.SecretTypeServiceAccountToken
-	case "kubernetes.io/dockercfg":
-		kubeSecretType = corev1.SecretTypeDockercfg
-	case "kubernetes.io/dockerconfigjson":
-		kubeSecretType = corev1.SecretTypeDockerConfigJson
-	case "kubernetes.io/basic-auth":
-		kubeSecretType = corev1.SecretTypeBasicAuth
-	case "kubernetes.io/ssh-auth":
-		kubeSecretType = corev1.SecretTypeSSHAuth
-	case "kubernetes.io/tls":
-		kubeSecretType = corev1.SecretTypeTLS
-	case "bootstrap.kubernetes.io/token":
-		kubeSecretType = corev1.SecretTypeBootstrapToken
-	default:
-		kubeSecretType = corev1.SecretTypeOpaque
-	}
-
-	return kubeSecretType
 }
 
 // decryptSopsSecretInstance decrypts spec.secretTemplates
