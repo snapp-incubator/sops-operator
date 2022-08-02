@@ -24,7 +24,7 @@ spec:
         - /manager
         args:
         - --leader-elect
-        image: controller:latest
+        image: ghcr.io/snapp-incubator/sops-operator:0.1.0
         name: manager
         securityContext:
           allowPrivilegeEscalation: false
