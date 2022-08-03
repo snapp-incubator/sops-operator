@@ -24,5 +24,6 @@ FROM alpine:3.15.5
 RUN apk add gpg gpg-agent
 WORKDIR /
 COPY --from=builder /workspace/manager .
+USER root
 
 ENTRYPOINT ["/manager"]
