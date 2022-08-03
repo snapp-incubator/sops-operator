@@ -42,6 +42,7 @@ type SopsSecretSpec struct {
 type SopsSecretStatus struct {
 	// SopsSecret status message
 	// +kubebuilder:validation:Optional
+	Health  string `json:"health"`
 	Message string `json:"message,omitempty"`
 }
 
@@ -52,7 +53,9 @@ type SopsSecretStatus struct {
 //+kubebuilder:resource:shortName=sops,scope=Namespaced
 //+kubebuilder:subresource:status
 //+kubebuilder:storageversion
-//+kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.message`
+//+kubebuilder:printcolumn:name="Health",type=string,JSONPath=`.status.health`
+//+kubebuilder:printcolumn:name="Message",type=string,JSONPath=`.status.message`
+//+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 type SopsSecret struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

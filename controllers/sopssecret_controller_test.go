@@ -113,6 +113,15 @@ var _ = Describe("", func() {
 			testSecret = &corev1.Secret{}
 			targetSecretNamespacedName = &types.NamespacedName{Namespace: SopsSecretNamespace, Name: SopsSecretName}
 			Expect(controller.K8sClient.Get(ctx, *targetSecretNamespacedName, testSecret)).To(Succeed())
+
+			// test labels are equal with parent
+			Expect(len(testSecret.GetLabels())).NotTo(Equal(0))
+			Expect(testSecret.GetLabels()).Should(Equal(TestSopsSecretObj.GetLabels()))
+
+			// test annotations are equal with parent
+			Expect(len(testSecret.GetAnnotations())).NotTo(Equal(0))
+			Expect(testSecret.GetAnnotations()).Should(Equal(TestSopsSecretObj.GetAnnotations()))
+
 			Expect(controller.K8sClient.Delete(ctx, testSecret)).To(Succeed())
 			time.Sleep(10 * time.Second)
 			secretsList := &corev1.SecretList{}

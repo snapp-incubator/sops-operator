@@ -40,10 +40,11 @@ type GPGKeyStatus struct {
 	Message string `json:"message"`
 }
 
+// GPGKey is the Schema for the gpgkeys API
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
-
-// GPGKey is the Schema for the gpgkeys API
+//+kubebuilder:printcolumn:name="Message",type=string,JSONPath=`.status.message`
+//+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 type GPGKey struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

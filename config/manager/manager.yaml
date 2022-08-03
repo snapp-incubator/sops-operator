@@ -17,8 +17,6 @@ spec:
       labels:
         control-plane: controller-manager
     spec:
-#      securityContext:
-#        runAsNonRoot: true
       containers:
       - command:
         - /manager
@@ -27,7 +25,7 @@ spec:
         image: ghcr.io/snapp-incubator/sops-operator:main
         name: manager
         securityContext:
-          allowPrivilegeEscalation: false
+          runAsUser: 0
         livenessProbe:
           httpGet:
             path: /healthz

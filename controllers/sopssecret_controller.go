@@ -46,6 +46,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+var (
+	unwantedAnnotations = []string{
+		"kubectl.kubernetes.io/last-applied-configuration",
+	}
+)
+
 // SopsSecretReconciler reconciles a SopsSecret object
 type SopsSecretReconciler struct {
 	client.Client
@@ -115,7 +121,8 @@ func (r *SopsSecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return reconcile.Result{Requeue: true, RequeueAfter: time.Duration(r.RequeueAfter) * time.Minute}, nil
 	}
 
-	encryptedSopsSecret.Status.Message = "Healthy"
+	encryptedSopsSecret.Status.Health = lang.SopsHealthyStatus
+	encryptedSopsSecret.Status.Message = ""
 	_ = r.Status().Update(context.Background(), encryptedSopsSecret)
 
 	r.Log.Info("SopsSecret is Healthy", "sopssecret", req.NamespacedName)
@@ -132,6 +139,7 @@ func (r *SopsSecretReconciler) getGPGKeyRefNameObj(
 	err := r.Get(ctx, namespacedName, gpgkey)
 	if err != nil {
 		r.Log.Info("Error fetching GPGKey", "GPGKey", namespacedName, "error", err)
+		encryptedSopsSecret.Status.Health = lang.SopsUnHealthyStatus
 		encryptedSopsSecret.Status.Message = lang.ErrGPGKeyRefFetchFail
 		_ = r.Status().Update(ctx, encryptedSopsSecret)
 		return nil, true
@@ -145,7 +153,8 @@ func (r *SopsSecretReconciler) decryptSopsSecret(
 ) (*gitopssecretsnappcloudiov1alpha1.SopsSecret, bool) {
 	decryptedSopsSecret, err := decryptSopsSecretInstance(encryptedSopsSecret, r.Log, passphrase)
 	if err != nil {
-		encryptedSopsSecret.Status.Message = "Decryption error"
+		encryptedSopsSecret.Status.Health = lang.SopsUnHealthyStatus
+		encryptedSopsSecret.Status.Message = lang.ErrSopsSecretDecryptionFailed
 
 		// will not process plainTextSopsSecret error as we are already in error mode here
 		_ = r.Status().Update(context.Background(), encryptedSopsSecret)
@@ -163,7 +172,8 @@ func (r *SopsSecretReconciler) isKubeSecretManagedOrAnnotatedToBeManaged(
 ) bool {
 	// kubeSecretFromTemplate found - perform ownership check
 	if !metav1.IsControlledBy(kubeSecretInCluster, encryptedSopsSecret) && !isAnnotatedToBeManaged(kubeSecretInCluster) {
-		encryptedSopsSecret.Status.Message = "Child secret is not owned by controller error"
+		encryptedSopsSecret.Status.Health = lang.SopsUnHealthyStatus
+		encryptedSopsSecret.Status.Message = lang.ErrSopsSecretChildNotOwned
 		_ = r.Status().Update(context.Background(), encryptedSopsSecret)
 
 		r.Log.Info(
@@ -191,6 +201,8 @@ func (r *SopsSecretReconciler) refreshKubeSecretIfNeeded(
 	copyOfKubeSecretInCluster.ObjectMeta.Annotations = kubeSecretFromTemplate.ObjectMeta.Annotations
 	copyOfKubeSecretInCluster.ObjectMeta.Labels = kubeSecretFromTemplate.ObjectMeta.Labels
 
+	removeUnwantedAnnotations(copyOfKubeSecretInCluster)
+
 	if isAnnotatedToBeManaged(kubeSecretInCluster) {
 		copyOfKubeSecretInCluster.ObjectMeta.OwnerReferences = kubeSecretFromTemplate.ObjectMeta.OwnerReferences
 	}
@@ -202,7 +214,8 @@ func (r *SopsSecretReconciler) refreshKubeSecretIfNeeded(
 			"namespace", copyOfKubeSecretInCluster.Namespace,
 		)
 		if err := r.Update(ctx, copyOfKubeSecretInCluster); err != nil {
-			encryptedSopsSecret.Status.Message = "Child secret update error"
+			encryptedSopsSecret.Status.Health = lang.SopsUnHealthyStatus
+			encryptedSopsSecret.Status.Message = lang.ErrSopsSecretCouldNotUpdateChild
 			_ = r.Status().Update(context.Background(), encryptedSopsSecret)
 
 			r.Log.Info(
@@ -252,7 +265,8 @@ func (r *SopsSecretReconciler) getSecretFromClusterOrCreateFromTemplate(
 
 	// Unknown error while trying to find kubeSecretFromTemplate in cluster - reschedule reconciliation
 	if err != nil {
-		encryptedSopsSecret.Status.Message = "Unknown Error"
+		encryptedSopsSecret.Status.Health = lang.SopsUnHealthyStatus
+		encryptedSopsSecret.Status.Message = lang.ErrSopsSecretUnknownError
 		_ = r.Status().Update(context.Background(), encryptedSopsSecret)
 
 		r.Log.Info(
@@ -276,7 +290,8 @@ func (r *SopsSecretReconciler) newKubeSecretFromTemplate(
 	// Define a new secret object
 	kubeSecretFromTemplate, err := createKubeSecretFromTemplate(plainTextSopsSecret, stringData, r.Log)
 	if err != nil {
-		encryptedSopsSecret.Status.Message = "New child secret creation error"
+		encryptedSopsSecret.Status.Health = lang.SopsUnHealthyStatus
+		encryptedSopsSecret.Status.Message = lang.ErrSopsSecretNewChildCreationFailed
 		_ = r.Status().Update(context.Background(), encryptedSopsSecret)
 
 		r.Log.Info(
@@ -290,7 +305,8 @@ func (r *SopsSecretReconciler) newKubeSecretFromTemplate(
 	// Set encryptedSopsSecret as the owner of kubeSecret
 	err = controllerutil.SetControllerReference(encryptedSopsSecret, kubeSecretFromTemplate, r.Scheme)
 	if err != nil {
-		encryptedSopsSecret.Status.Message = "Setting controller ownership of the child secret error"
+		encryptedSopsSecret.Status.Health = lang.SopsUnHealthyStatus
+		encryptedSopsSecret.Status.Message = lang.ErrSopsSecretChildSecretOwnerShip
 		_ = r.Status().Update(context.Background(), encryptedSopsSecret)
 
 		r.Log.Info(
@@ -315,7 +331,8 @@ func (r *SopsSecretReconciler) isSecretSuspended(
 			"sopssecret", req.NamespacedName,
 		)
 
-		encryptedSopsSecret.Status.Message = "Reconciliation is suspended"
+		encryptedSopsSecret.Status.Health = lang.SopsHealthyStatus
+		encryptedSopsSecret.Status.Message = lang.SopsSecretSuspended
 		_ = r.Status().Update(context.Background(), encryptedSopsSecret)
 
 		return true
@@ -499,4 +516,14 @@ func customDecryptData(data []byte, format string, passphrase string) (cleartext
 	}
 
 	return store.EmitPlainFile(tree.Branches)
+}
+
+func removeUnwantedAnnotations(secret *corev1.Secret) {
+	allAnnotations := cloneMap(secret.GetAnnotations())
+	for _, annotation := range unwantedAnnotations {
+		if _, exists := allAnnotations[annotation]; exists {
+			delete(allAnnotations, annotation)
+		}
+	}
+	secret.Annotations = allAnnotations
 }
