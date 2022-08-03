@@ -79,7 +79,7 @@ func (r *GPGKeyReconciler) getGPGKey(req ctrl.Request) (*gitopssecretsnappcloudi
 	gpgKey := &gitopssecretsnappcloudiov1alpha1.GPGKey{}
 	err := r.Get(context.Background(), req.NamespacedName, gpgKey)
 	if err != nil {
-		r.Log.Info("Couldn't get GPGKey obj", "gpgkey", req.NamespacedName)
+		r.Log.Info("Couldn't get GPGKey obj", "gpgkey", req.NamespacedName, "error", err)
 		return gpgKey, true, err
 	}
 	return gpgKey, false, nil
@@ -89,7 +89,7 @@ func (r *GPGKeyReconciler) importKey(req ctrl.Request, gpgKey *gitopssecretsnapp
 	keyDirPath := filepath.Join("keys", req.Namespace)
 	err := createKeyDirectories(keyDirPath)
 	if err != nil {
-		r.Log.Info("Couldn't create directory for gpgkey", "gpgkey", req.NamespacedName)
+		r.Log.Info("Couldn't create directory for gpgkey", "gpgkey", req.NamespacedName, "error", err)
 		gpgKey.Status.Message = GPGKeyFailedToImport
 		_ = r.Status().Update(context.Background(), gpgKey)
 		return true
@@ -98,7 +98,7 @@ func (r *GPGKeyReconciler) importKey(req ctrl.Request, gpgKey *gitopssecretsnapp
 	keyFullPath := filepath.Join(keyDirPath, req.Name+".gpg")
 	err = createKeyFile(keyFullPath, gpgKey)
 	if err != nil {
-		r.Log.Info("Couldn't create file for gpgkey", "gpgkey", req.NamespacedName)
+		r.Log.Info("Couldn't create file for gpgkey", "gpgkey", req.NamespacedName, "error", err)
 		gpgKey.Status.Message = GPGKeyFailedToImport
 		_ = r.Status().Update(context.Background(), gpgKey)
 		return true
