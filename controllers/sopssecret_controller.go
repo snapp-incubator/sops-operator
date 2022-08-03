@@ -521,9 +521,7 @@ func customDecryptData(data []byte, format string, passphrase string) (cleartext
 func removeUnwantedAnnotations(secret *corev1.Secret) {
 	allAnnotations := cloneMap(secret.GetAnnotations())
 	for _, annotation := range unwantedAnnotations {
-		if _, exists := allAnnotations[annotation]; exists {
-			delete(allAnnotations, annotation)
-		}
+		delete(allAnnotations, annotation)
 	}
 	secret.Annotations = allAnnotations
 }
