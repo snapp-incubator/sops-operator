@@ -2,14 +2,14 @@ package controllers_test
 
 import (
 	"context"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	gitopssecretsnappcloudiov1alpha1 "github.com/snapp-incubator/sops-operator/api/v1alpha1"
 	controller "github.com/snapp-incubator/sops-operator/controllers"
-	"io/ioutil"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
+	"os"
 	"path/filepath"
 	"time"
 )
@@ -26,7 +26,7 @@ var _ = Describe("", func() {
 	TestSopsSecretObj := &gitopssecretsnappcloudiov1alpha1.SopsSecret{}
 
 	BeforeEach(func() {
-		content, err := ioutil.ReadFile(exampleGPGFileUnsafePath)
+		content, err := os.ReadFile(exampleGPGFileUnsafePath)
 		Expect(err).Should(BeNil())
 
 		obj, _, err := scheme.Codecs.UniversalDeserializer().Decode(content, nil, nil)
@@ -35,7 +35,7 @@ var _ = Describe("", func() {
 	})
 
 	BeforeEach(func() {
-		content, err := ioutil.ReadFile(exampleGPGFilePath)
+		content, err := os.ReadFile(exampleGPGFilePath)
 		Expect(err).Should(BeNil())
 
 		obj, _, err := scheme.Codecs.UniversalDeserializer().Decode(content, nil, nil)
@@ -44,7 +44,7 @@ var _ = Describe("", func() {
 	})
 
 	BeforeEach(func() {
-		content, err := ioutil.ReadFile(exampleFilePath)
+		content, err := os.ReadFile(exampleFilePath)
 		Expect(err).Should(BeNil())
 
 		obj, _, err := scheme.Codecs.UniversalDeserializer().Decode(content, nil, nil)

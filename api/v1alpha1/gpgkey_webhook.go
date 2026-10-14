@@ -17,14 +17,13 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
 	"errors"
-	"fmt"
 	passwordValidator "github.com/go-passwd/validator"
 	"github.com/snapp-incubator/sops-operator/lang"
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	"strings"
 )
 
@@ -35,57 +34,46 @@ var (
 )
 
 func (r *GPGKey) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(r).
+	return ctrl.NewWebhookManagedBy(mgr, r).
+		WithDefaulter(&gpgKeyDefaulter{}).
+		WithValidator(&gpgKeyValidator{}).
 		Complete()
 }
 
-// TODO(user): EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-
 //+kubebuilder:webhook:path=/mutate-gitopssecret-snappcloud-io-v1alpha1-gpgkey,mutating=true,failurePolicy=fail,sideEffects=None,groups=gitopssecret.snappcloud.io,resources=gpgkeys,verbs=create;update,versions=v1alpha1,name=mgpgkey.kb.io,admissionReviewVersions=v1
 
-var _ webhook.Defaulter = &GPGKey{}
+type gpgKeyDefaulter struct{}
 
-// Default implements webhook.Defaulter so a webhook will be registered for the type
-func (r *GPGKey) Default() {
+var _ admission.Defaulter[*GPGKey] = &gpgKeyDefaulter{}
+
+// Default implements admission.Defaulter so a webhook will be registered for the type
+func (d *gpgKeyDefaulter) Default(_ context.Context, r *GPGKey) error {
 	gpgKeyLog.Info("default", "name", r.Name)
-
-	// TODO(user): fill in your defaulting logic.
+	return nil
 }
 
-// TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
 //+kubebuilder:webhook:path=/validate-gitopssecret-snappcloud-io-v1alpha1-gpgkey,mutating=false,failurePolicy=fail,sideEffects=None,groups=gitopssecret.snappcloud.io,resources=gpgkeys,verbs=create;update,versions=v1alpha1,name=vgpgkey.kb.io,admissionReviewVersions=v1
 
-var _ webhook.Validator = &GPGKey{}
+type gpgKeyValidator struct{}
 
-// ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *GPGKey) ValidateCreate() error {
+var _ admission.Validator[*GPGKey] = &gpgKeyValidator{}
+
+// ValidateCreate implements admission.Validator so a webhook will be registered for the type
+func (v *gpgKeyValidator) ValidateCreate(_ context.Context, r *GPGKey) (admission.Warnings, error) {
 	gpgKeyLog.Info("validate create", "name", r.Name)
-	if err := r.ValidateGPGKey(); err != nil {
-		return err
-	}
-
-	// TODO(user): fill in your validation logic upon object creation.
-	return nil
+	return nil, r.ValidateGPGKey()
 }
 
-// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *GPGKey) ValidateUpdate(old runtime.Object) error {
+// ValidateUpdate implements admission.Validator so a webhook will be registered for the type
+func (v *gpgKeyValidator) ValidateUpdate(_ context.Context, _, r *GPGKey) (admission.Warnings, error) {
 	gpgKeyLog.Info("validate update", "name", r.Name)
-	if err := r.ValidateGPGKey(); err != nil {
-		return err
-	}
-
-	// TODO(user): fill in your validation logic upon object update.
-	return nil
+	return nil, r.ValidateGPGKey()
 }
 
-// ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *GPGKey) ValidateDelete() error {
+// ValidateDelete implements admission.Validator so a webhook will be registered for the type
+func (v *gpgKeyValidator) ValidateDelete(_ context.Context, r *GPGKey) (admission.Warnings, error) {
 	gpgKeyLog.Info("validate delete", "name", r.Name)
-
-	// TODO(user): fill in your validation logic upon object deletion.
-	return nil
+	return nil, nil
 }
 
 func (r *GPGKey) ValidateGPGKey() error {
@@ -95,9 +83,9 @@ func (r *GPGKey) ValidateGPGKey() error {
 	}
 	trimedArmoredPrivateKey := strings.TrimSpace(r.Spec.ArmoredPrivateKey)
 	if len(trimedArmoredPrivateKey) < gPGKeyArmoredPrivateKeyMinLength {
-		return fmt.Errorf(lang.ErrGPGKeySpecArmoredPrivateKeyLength)
+		return errors.New(lang.ErrGPGKeySpecArmoredPrivateKeyLength)
 	} else if strings.HasPrefix(trimedArmoredPrivateKey, "----") || strings.HasSuffix(trimedArmoredPrivateKey, "----") {
-		return fmt.Errorf(lang.ErrGPGKeySpecArmoredPrivateKeyPrefixSuffix)
+		return errors.New(lang.ErrGPGKeySpecArmoredPrivateKeyPrefixSuffix)
 	}
 	return nil
 }

@@ -70,7 +70,7 @@ func (r *GPGKeyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	rescheduleReconcileLoop := r.importKey(req, gpgKey)
 	if rescheduleReconcileLoop {
-		return reconcile.Result{Requeue: true, RequeueAfter: time.Duration(r.RequeueAfter) * time.Minute}, nil
+		return reconcile.Result{RequeueAfter: time.Duration(r.RequeueAfter) * time.Minute}, nil
 	}
 	return ctrl.Result{}, nil
 }

@@ -17,75 +17,66 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"fmt"
+	"context"
+	"errors"
 	"github.com/snapp-incubator/sops-operator/lang"
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 // log is for logging in this package.
 var sopssecretlog = logf.Log.WithName("sopssecret-resource")
 
 func (r *SopsSecret) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(r).
+	return ctrl.NewWebhookManagedBy(mgr, r).
+		WithDefaulter(&sopsSecretDefaulter{}).
+		WithValidator(&sopsSecretValidator{}).
 		Complete()
 }
 
-// TODO(user): EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-
 //+kubebuilder:webhook:path=/mutate-gitopssecret-snappcloud-io-v1alpha1-sopssecret,mutating=true,failurePolicy=fail,sideEffects=None,groups=gitopssecret.snappcloud.io,resources=sopssecrets,verbs=create;update,versions=v1alpha1,name=msopssecret.kb.io,admissionReviewVersions=v1
 
-var _ webhook.Defaulter = &SopsSecret{}
+type sopsSecretDefaulter struct{}
 
-// Default implements webhook.Defaulter so a webhook will be registered for the type
-func (r *SopsSecret) Default() {
+var _ admission.Defaulter[*SopsSecret] = &sopsSecretDefaulter{}
+
+// Default implements admission.Defaulter so a webhook will be registered for the type
+func (d *sopsSecretDefaulter) Default(_ context.Context, r *SopsSecret) error {
 	sopssecretlog.Info("default", "name", r.Name)
+	return nil
 }
 
-// TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
 //+kubebuilder:webhook:path=/validate-gitopssecret-snappcloud-io-v1alpha1-sopssecret,mutating=false,failurePolicy=fail,sideEffects=None,groups=gitopssecret.snappcloud.io,resources=sopssecrets,verbs=create;update,versions=v1alpha1,name=vsopssecret.kb.io,admissionReviewVersions=v1
 
-var _ webhook.Validator = &SopsSecret{}
+type sopsSecretValidator struct{}
 
-// ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *SopsSecret) ValidateCreate() error {
+var _ admission.Validator[*SopsSecret] = &sopsSecretValidator{}
+
+// ValidateCreate implements admission.Validator so a webhook will be registered for the type
+func (v *sopsSecretValidator) ValidateCreate(_ context.Context, r *SopsSecret) (admission.Warnings, error) {
 	sopssecretlog.Info("validate create", "name", r.Name)
-	if err := r.ValidateSopsSecret(); err != nil {
-		return err
-	}
-
-	// TODO(user): fill in your validation logic upon object creation.
-	return nil
+	return nil, r.ValidateSopsSecret()
 }
 
-// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *SopsSecret) ValidateUpdate(old runtime.Object) error {
+// ValidateUpdate implements admission.Validator so a webhook will be registered for the type
+func (v *sopsSecretValidator) ValidateUpdate(_ context.Context, _, r *SopsSecret) (admission.Warnings, error) {
 	sopssecretlog.Info("validate update", "name", r.Name)
-	if err := r.ValidateSopsSecret(); err != nil {
-		return err
-	}
-
-	// TODO(user): fill in your validation logic upon object update.
-	return nil
+	return nil, r.ValidateSopsSecret()
 }
 
-// ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *SopsSecret) ValidateDelete() error {
+// ValidateDelete implements admission.Validator so a webhook will be registered for the type
+func (v *sopsSecretValidator) ValidateDelete(_ context.Context, r *SopsSecret) (admission.Warnings, error) {
 	sopssecretlog.Info("validate delete", "name", r.Name)
-
-	// TODO(user): fill in your validation logic upon object deletion.
-	return nil
+	return nil, nil
 }
 
 func (r *SopsSecret) ValidateSopsSecret() error {
 	if r.Spec.GPGKeyRefName == "" {
-		return fmt.Errorf(lang.ErrSopsSecretSpecGPGKeyRefNameEmpty)
+		return errors.New(lang.ErrSopsSecretSpecGPGKeyRefNameEmpty)
 	}
 	if len(r.Spec.StringData) == 0 {
-		return fmt.Errorf(lang.ErrSopsSecretSpecNoData)
+		return errors.New(lang.ErrSopsSecretSpecNoData)
 	}
 	return nil
 }

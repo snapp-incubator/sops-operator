@@ -2,7 +2,7 @@ package v1alpha1
 
 import (
 	"context"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/snapp-incubator/sops-operator/lang"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -90,7 +90,8 @@ var _ = Describe("GPGKey webhook", func() {
 			}
 			err = k8sClient.Create(ctx, fooGPGKeyObj)
 			Expect(err).NotTo(BeNil())
-			Expect(string(errors.ReasonForError(err))).Should(Equal(lang.ErrGPGKeySpecPassphraseLength))
+			Expect(errors.IsForbidden(err)).To(BeTrue())
+			Expect(err.Error()).Should(ContainSubstring(lang.ErrGPGKeySpecPassphraseLength))
 
 			By("Creating a password with length lower than minimum expected")
 			barGPGKeyObj := &GPGKey{
@@ -103,7 +104,8 @@ var _ = Describe("GPGKey webhook", func() {
 			}
 			err = k8sClient.Create(ctx, barGPGKeyObj)
 			Expect(err).NotTo(BeNil())
-			Expect(string(errors.ReasonForError(err))).Should(Equal(lang.ErrGPGKeySpecPassphraseLength))
+			Expect(errors.IsForbidden(err)).To(BeTrue())
+			Expect(err.Error()).Should(ContainSubstring(lang.ErrGPGKeySpecPassphraseLength))
 		})
 
 		It("Should fail if armored private key is empty", func() {
@@ -118,7 +120,8 @@ var _ = Describe("GPGKey webhook", func() {
 			}
 			err = k8sClient.Create(ctx, fooGPGKeyObj)
 			Expect(err).NotTo(BeNil())
-			Expect(string(errors.ReasonForError(err))).Should(Equal(lang.ErrGPGKeySpecArmoredPrivateKeyLength))
+			Expect(errors.IsForbidden(err)).To(BeTrue())
+			Expect(err.Error()).Should(ContainSubstring(lang.ErrGPGKeySpecArmoredPrivateKeyLength))
 		})
 
 		It("Should create if passphrase and armored key are ok", func() {

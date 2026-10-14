@@ -2,7 +2,7 @@ package v1alpha1
 
 import (
 	"context"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/snapp-incubator/sops-operator/lang"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -59,7 +59,8 @@ var _ = Describe("SopsSecret webhook", func() {
 			}
 			err = k8sClient.Create(ctx, fooSopsSecretObj)
 			Expect(err).NotTo(BeNil())
-			Expect(string(errors.ReasonForError(err))).Should(Equal(lang.ErrSopsSecretSpecNoData))
+			Expect(errors.IsForbidden(err)).To(BeTrue())
+			Expect(err.Error()).Should(ContainSubstring(lang.ErrSopsSecretSpecNoData))
 		})
 
 		It("Should fail if gpg_key_ref_name is empty", func() {
@@ -74,7 +75,8 @@ var _ = Describe("SopsSecret webhook", func() {
 			}
 			err = k8sClient.Create(ctx, fooSopsSecretObj)
 			Expect(err).NotTo(BeNil())
-			Expect(string(errors.ReasonForError(err))).Should(Equal(lang.ErrSopsSecretSpecGPGKeyRefNameEmpty))
+			Expect(errors.IsForbidden(err)).To(BeTrue())
+			Expect(err.Error()).Should(ContainSubstring(lang.ErrSopsSecretSpecGPGKeyRefNameEmpty))
 		})
 
 		It("Should create if suspend is empty", func() {

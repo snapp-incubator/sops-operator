@@ -4,14 +4,14 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/fatih/color"
+	"github.com/getsops/sops/v3"
+	"github.com/getsops/sops/v3/keys"
+	"github.com/getsops/sops/v3/keyservice"
+	"github.com/getsops/sops/v3/pgp"
+	"github.com/getsops/sops/v3/shamir"
 	"github.com/goware/prefixer"
 	"github.com/mitchellh/go-wordwrap"
-	"go.mozilla.org/sops/v3"
-	"go.mozilla.org/sops/v3/keys"
-	"go.mozilla.org/sops/v3/keyservice"
-	"go.mozilla.org/sops/v3/pgp"
-	"go.mozilla.org/sops/v3/shamir"
-	"io/ioutil"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -136,7 +136,7 @@ func gpgBinary() string {
 
 func NewMasterKeyFromFingerprint(fingerprint string) *pgp.MasterKey {
 	return &pgp.MasterKey{
-		Fingerprint:  strings.Replace(fingerprint, " ", "", -1),
+		Fingerprint:  strings.ReplaceAll(fingerprint, " ", ""),
 		CreationDate: time.Now().UTC(),
 	}
 }
@@ -224,7 +224,7 @@ func (r *decryptGroupError) UserError() string {
 	}
 	reader := prefixer.New(strings.NewReader(message), "  ")
 	// Safe to ignore this error, as reading from a strings.Reader can't fail
-	errMsg, _ := ioutil.ReadAll(reader)
+	errMsg, _ := io.ReadAll(reader)
 	return fmt.Sprintf("%s\n%s", header, string(errMsg))
 }
 
@@ -267,12 +267,12 @@ func (e *decryptKeyError) UserError() string {
 		wrappedErr := wordwrap.WrapString(err.Error(), 60)
 		reader := prefixer.New(strings.NewReader(wrappedErr), "  | ")
 		// Safe to ignore this error, as reading from a strings.Reader can't fail
-		errMsg, _ := ioutil.ReadAll(reader)
+		errMsg, _ := io.ReadAll(reader)
 		errMsg[0] = '-'
 		errMessages = append(errMessages, string(errMsg))
 	}
 	joinedMsgs := strings.Join(errMessages, "\n\n")
 	reader := prefixer.New(strings.NewReader(joinedMsgs), "  ")
-	errMsg, _ := ioutil.ReadAll(reader)
+	errMsg, _ := io.ReadAll(reader)
 	return fmt.Sprintf("%s\n%s", header, string(errMsg))
 }

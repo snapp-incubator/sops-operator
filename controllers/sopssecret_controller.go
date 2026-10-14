@@ -21,24 +21,24 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/snapp-incubator/sops-operator/lang"
-	"io/ioutil"
+	"io"
 	"time"
 
+	"github.com/getsops/sops/v3"
 	"github.com/go-logr/logr"
 	"github.com/sirupsen/logrus"
-	"go.mozilla.org/sops/v3"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	sopsaes "github.com/getsops/sops/v3/aes"
+	sopslogging "github.com/getsops/sops/v3/logging"
+	sopsdotenv "github.com/getsops/sops/v3/stores/dotenv"
+	sopsjson "github.com/getsops/sops/v3/stores/json"
+	sopsyaml "github.com/getsops/sops/v3/stores/yaml"
 	gitopssecretsnappcloudiov1alpha1 "github.com/snapp-incubator/sops-operator/api/v1alpha1"
-	sopsaes "go.mozilla.org/sops/v3/aes"
-	sopslogging "go.mozilla.org/sops/v3/logging"
-	sopsdotenv "go.mozilla.org/sops/v3/stores/dotenv"
-	sopsjson "go.mozilla.org/sops/v3/stores/json"
-	sopsyaml "go.mozilla.org/sops/v3/stores/yaml"
 	corev1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -85,7 +85,7 @@ func (r *SopsSecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	referencedGPGKey, rescheduleReconcileLoop := r.getGPGKeyRefNameObj(ctx, req, encryptedSopsSecret)
 	if rescheduleReconcileLoop {
-		return reconcile.Result{Requeue: true, RequeueAfter: time.Duration(r.RequeueAfter) * time.Minute}, nil
+		return reconcile.Result{RequeueAfter: time.Duration(r.RequeueAfter) * time.Minute}, nil
 	}
 
 	if r.isSecretSuspended(encryptedSopsSecret, req) {
@@ -94,7 +94,7 @@ func (r *SopsSecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	plainTextSopsSecret, rescheduleReconcileLoop := r.decryptSopsSecret(encryptedSopsSecret, referencedGPGKey.Spec.Passphrase)
 	if rescheduleReconcileLoop {
-		return reconcile.Result{Requeue: true, RequeueAfter: time.Duration(r.RequeueAfter) * time.Minute}, nil
+		return reconcile.Result{RequeueAfter: time.Duration(r.RequeueAfter) * time.Minute}, nil
 	}
 
 	// Iterate over secret templates
@@ -103,22 +103,22 @@ func (r *SopsSecretReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	kubeSecretFromTemplate, rescheduleReconcileLoop := r.newKubeSecretFromTemplate(req, encryptedSopsSecret, plainTextSopsSecret, &stringData)
 	if rescheduleReconcileLoop {
-		return reconcile.Result{Requeue: true, RequeueAfter: time.Duration(r.RequeueAfter) * time.Minute}, nil
+		return reconcile.Result{RequeueAfter: time.Duration(r.RequeueAfter) * time.Minute}, nil
 	}
 
 	kubeSecretInCluster, rescheduleReconcileLoop := r.getSecretFromClusterOrCreateFromTemplate(ctx, req, encryptedSopsSecret, kubeSecretFromTemplate)
 	if rescheduleReconcileLoop {
-		return reconcile.Result{Requeue: true, RequeueAfter: time.Duration(r.RequeueAfter) * time.Minute}, nil
+		return reconcile.Result{RequeueAfter: time.Duration(r.RequeueAfter) * time.Minute}, nil
 	}
 
 	rescheduleReconcileLoop = r.isKubeSecretManagedOrAnnotatedToBeManaged(req, encryptedSopsSecret, kubeSecretInCluster)
 	if rescheduleReconcileLoop {
-		return reconcile.Result{Requeue: true, RequeueAfter: time.Duration(r.RequeueAfter) * time.Minute}, nil
+		return reconcile.Result{RequeueAfter: time.Duration(r.RequeueAfter) * time.Minute}, nil
 	}
 
 	rescheduleReconcileLoop = r.refreshKubeSecretIfNeeded(ctx, req, encryptedSopsSecret, kubeSecretFromTemplate, kubeSecretInCluster)
 	if rescheduleReconcileLoop {
-		return reconcile.Result{Requeue: true, RequeueAfter: time.Duration(r.RequeueAfter) * time.Minute}, nil
+		return reconcile.Result{RequeueAfter: time.Duration(r.RequeueAfter) * time.Minute}, nil
 	}
 
 	encryptedSopsSecret.Status.Health = lang.SopsHealthyStatus
@@ -198,13 +198,13 @@ func (r *SopsSecretReconciler) refreshKubeSecretIfNeeded(
 	copyOfKubeSecretInCluster.StringData = kubeSecretFromTemplate.StringData
 	copyOfKubeSecretInCluster.Data = map[string][]byte{}
 	copyOfKubeSecretInCluster.Type = kubeSecretFromTemplate.Type
-	copyOfKubeSecretInCluster.ObjectMeta.Annotations = kubeSecretFromTemplate.ObjectMeta.Annotations
-	copyOfKubeSecretInCluster.ObjectMeta.Labels = kubeSecretFromTemplate.ObjectMeta.Labels
+	copyOfKubeSecretInCluster.Annotations = kubeSecretFromTemplate.Annotations
+	copyOfKubeSecretInCluster.Labels = kubeSecretFromTemplate.Labels
 
 	removeUnwantedAnnotations(copyOfKubeSecretInCluster)
 
 	if isAnnotatedToBeManaged(kubeSecretInCluster) {
-		copyOfKubeSecretInCluster.ObjectMeta.OwnerReferences = kubeSecretFromTemplate.ObjectMeta.OwnerReferences
+		copyOfKubeSecretInCluster.OwnerReferences = kubeSecretFromTemplate.OwnerReferences
 	}
 
 	if !apiequality.Semantic.DeepEqual(kubeSecretInCluster, copyOfKubeSecretInCluster) {
@@ -384,7 +384,7 @@ func (r *SopsSecretReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	// Set logrus logs to be discarded
 	for k := range sopslogging.Loggers {
-		sopslogging.Loggers[k].Out = ioutil.Discard
+		sopslogging.Loggers[k].Out = io.Discard
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
@@ -478,7 +478,8 @@ func decryptSopsSecretInstance(
 // The format string can be `json`, `yaml`, `dotenv` or `binary`.
 // If the format string is empty, binary format is assumed.
 // NOTE: this function is taken from sops code and adjusted
-//       to ignore mac, as CR will always be mutated in k8s
+//
+//	to ignore mac, as CR will always be mutated in k8s
 func customDecryptData(data []byte, format string, passphrase string) (cleartext []byte, err error) {
 	// Initialize a Sops JSON store
 	var store sops.Store
@@ -502,7 +503,7 @@ func customDecryptData(data []byte, format string, passphrase string) (cleartext
 
 	key, err := GetDataKeyCustom(tree.Metadata, passphrase)
 	if userErr, ok := err.(sops.UserError); ok {
-		err = fmt.Errorf(userErr.UserError())
+		err = fmt.Errorf("%s", userErr.UserError())
 	}
 	if err != nil {
 		return nil, err

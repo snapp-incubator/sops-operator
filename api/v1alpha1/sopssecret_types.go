@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 const (
@@ -28,7 +29,7 @@ const (
 
 // SopsSecretSpec defines the desired state of SopsSecret
 type SopsSecretSpec struct {
-	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Optional
 	StringData map[string]string `json:"stringData,omitempty"`
 	// +kubebuilder:validation:Required
 	GPGKeyRefName string `json:"gpg_key_ref_name"`
@@ -50,12 +51,12 @@ type SopsSecretStatus struct {
 //+kubebuilder:subresource:status
 
 // SopsSecret is the Schema for the sopssecrets API
-//+kubebuilder:resource:shortName=sops,scope=Namespaced
-//+kubebuilder:subresource:status
-//+kubebuilder:storageversion
-//+kubebuilder:printcolumn:name="Health",type=string,JSONPath=`.status.health`
-//+kubebuilder:printcolumn:name="Message",type=string,JSONPath=`.status.message`
-//+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:resource:shortName=sops,scope=Namespaced
+// +kubebuilder:subresource:status
+// +kubebuilder:storageversion
+// +kubebuilder:printcolumn:name="Health",type=string,JSONPath=`.status.health`
+// +kubebuilder:printcolumn:name="Message",type=string,JSONPath=`.status.message`
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 type SopsSecret struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -75,5 +76,8 @@ type SopsSecretList struct {
 }
 
 func init() {
-	SchemeBuilder.Register(&SopsSecret{}, &SopsSecretList{})
+	SchemeBuilder.Register(func(s *runtime.Scheme) error {
+		s.AddKnownTypes(GroupVersion, &SopsSecret{}, &SopsSecretList{})
+		return nil
+	})
 }
