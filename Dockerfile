@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM golang:1.27.2 AS builder
+FROM golang:1.27.3 AS builder
 
 WORKDIR /workspace
 # Copy the Go Modules manifests
@@ -18,7 +18,7 @@ COPY lang/ lang/
 # Build
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o manager main.go
 
-FROM alpine:3.24.2
+FROM alpine:3.24.3
 RUN apk add gpg gpg-agent
 WORKDIR /
 COPY --from=builder /workspace/manager .
